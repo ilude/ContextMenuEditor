@@ -6,18 +6,11 @@
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
         <!-- UAC Manifest Options
-             If you want to change the Windows User Account Control level replace the 
-             requestedExecutionLevel node with one of the following.
-
-        <requestedExecutionLevel  level="asInvoker" uiAccess="false" />
-        <requestedExecutionLevel  level="requireAdministrator" uiAccess="false" />
-        <requestedExecutionLevel  level="highestAvailable" uiAccess="false" />
-
-             Specifying requestedExecutionLevel element will disable file and registry virtualization. 
-             Remove this element if your application requires this virtualization for backwards
-             compatibility.
+             Changed to asInvoker because elevation is now handled programmatically in App.xaml.cs
+             The application will detect if it's not elevated and relaunch itself with admin rights.
+             This allows 'dotnet run' to work properly during development.
         -->
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

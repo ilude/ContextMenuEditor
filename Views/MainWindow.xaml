@@ -89,7 +89,7 @@
                                     Command="{Binding DeleteCommand}"
                                     IsEnabled="{Binding HasSelection}"/>
                             <Separator Margin="0,8"/>
-                            <Button Content="Backup Registry Entries" 
+                            <Button Content="Backup Context Menus" 
                                     Command="{Binding BackupCommand}"/>
                         </StackPanel>
                     </Border>
