@@ -59,9 +59,30 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
+        cache: true
+        cache-dependency-path: '**/packages.lock.json'
+        
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
         
     - name: Restore dependencies
       run: dotnet restore ContextMenuEditor.csproj
+      
+    - name: Cache build output
+      uses: actions/cache@v4
+      with:
+        path: |
+          **/bin
+          **/obj
+        key: ${{ runner.os }}-build-${{ hashFiles('**/*.cs', '**/*.csproj', '**/*.xaml') }}-${{ steps.version.outputs.version }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ hashFiles('**/*.cs', '**/*.csproj', '**/*.xaml') }}-
+          ${{ runner.os }}-build-
       
     - name: Build application
       run: dotnet build ContextMenuEditor.csproj --configuration Release --no-restore /p:Version=${{ steps.version.outputs.version }}
