@@ -15,6 +15,13 @@
     <Product>Context Menu Editor</Product>
     <Description>A Windows application for managing context menu items</Description>
     <Copyright>Copyright © 2025</Copyright>
+    
+    <!-- Publish settings for self-contained deployment -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

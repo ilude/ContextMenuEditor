@@ -1,0 +1,79 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore ContextMenuEditor.csproj
+      
+    - name: Build application
+      run: dotnet build ContextMenuEditor.csproj --configuration Release --no-restore
+      
+    - name: Publish application
+      run: dotnet publish ContextMenuEditor.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish
+      
+    - name: Copy README to publish folder
+      run: Copy-Item README.md ./publish/
+      shell: pwsh
+      
+    - name: Create release package
+      run: |
+        $version = if ($env:GITHUB_REF -match 'refs/tags/(.*)') { $matches[1] } else { "latest" }
+        $zipName = "ContextMenuEditor-$version-win-x64.zip"
+        Compress-Archive -Path ./publish/* -DestinationPath $zipName
+        echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+        echo "VERSION=$version" >> $env:GITHUB_ENV
+      shell: pwsh
+      
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ContextMenuEditor-${{ env.VERSION }}
+        path: ${{ env.ZIP_NAME }}
+        
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ env.ZIP_NAME }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## Context Menu Editor ${{ env.VERSION }}
+          
+          ### Installation
+          1. Download the ZIP file below
+          2. Extract all files to a folder
+          3. Right-click `ContextMenuEditor.exe` and select "Run as administrator"
+          
+          ### Requirements
+          - Windows 10/11 (build 17763+)
+          - .NET 8 Runtime (Windows Desktop) - will be included in the package
+          
+          ### Features
+          - View and manage Windows context menu items
+          - Enable/disable context menu entries
+          - Delete unwanted context menu items
+          - Backup registry entries to .REG file
+          - Dark/Light theme support
+          
+          ⚠️ **Important**: This application requires administrator privileges to modify registry entries.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
