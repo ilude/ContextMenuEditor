@@ -1,7 +1,7 @@
 # GitHub Copilot Instructions for Context Menu Editor
 
 ## Project Overview
-This is a Windows WPF application for managing Windows context menu items. See #file:PRD.md for complete product requirements.
+This is a Windows WPF application for managing Windows context menu items. See #file:../PRD.md for complete product requirements.
 
 ## Development Philosophy
 
@@ -120,7 +120,7 @@ ContextMenuEditor/
 - Reference issues/features in commit messages
 
 ## Remember
-- Always reference #file:PRD.md for product requirements
+- Always reference #file:../PRD.md for product requirements
 - When in doubt, choose the simpler solution
 - Write code that others can easily understand and maintain
 - Focus on v1.0 features first; avoid scope creep
