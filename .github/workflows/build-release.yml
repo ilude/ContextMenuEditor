@@ -40,6 +40,20 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Required for semantic versioning to access git history
+        
+    - name: Calculate semantic version
+      id: version
+      uses: paulhatch/semantic-version@v5.4.0
+      with:
+        tag_prefix: "v"
+        major_pattern: "(MAJOR)"
+        minor_pattern: "(MINOR)"
+        version_format: "${major}.${minor}.${patch}"
+        bump_each_commit: false
+        search_commit_body: false
+        enable_prerelease_mode: false
       
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -50,10 +64,10 @@ jobs:
       run: dotnet restore ContextMenuEditor.csproj
       
     - name: Build application
-      run: dotnet build ContextMenuEditor.csproj --configuration Release --no-restore
+      run: dotnet build ContextMenuEditor.csproj --configuration Release --no-restore /p:Version=${{ steps.version.outputs.version }}
       
     - name: Publish application
-      run: dotnet publish ContextMenuEditor.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish
+      run: dotnet publish ContextMenuEditor.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish /p:Version=${{ steps.version.outputs.version }}
       
     - name: Copy README to publish folder
       run: Copy-Item README.md ./publish/
@@ -61,11 +75,11 @@ jobs:
       
     - name: Create release package
       run: |
-        $version = if ($env:GITHUB_REF -match 'refs/tags/(.*)') { $matches[1] } else { "latest" }
-        $zipName = "ContextMenuEditor-$version-win-x64.zip"
+        $version = "${{ steps.version.outputs.version }}"
+        $zipName = "ContextMenuEditor-v$version-win-x64.zip"
         Compress-Archive -Path ./publish/* -DestinationPath $zipName
         echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
-        echo "VERSION=$version" >> $env:GITHUB_ENV
+        echo "VERSION=v$version" >> $env:GITHUB_ENV
       shell: pwsh
       
     - name: Upload build artifact
@@ -83,8 +97,12 @@ jobs:
         draft: false
         prerelease: false
         generate_release_notes: true
+        name: Context Menu Editor ${{ env.VERSION }}
         body: |
           ## Context Menu Editor ${{ env.VERSION }}
+          
+          **Semantic Version**: `${{ steps.version.outputs.version }}`
+          **Version Type**: ${{ steps.version.outputs.version_type }}
           
           ### Installation
           1. Download the ZIP file below
@@ -93,7 +111,7 @@ jobs:
           
           ### Requirements
           - Windows 10/11 (build 17763+)
-          - .NET 8 Runtime (Windows Desktop) - will be included in the package
+          - No .NET installation required (self-contained)
           
           ### Features
           - View and manage Windows context menu items
@@ -103,5 +121,11 @@ jobs:
           - Dark/Light theme support
           
           ⚠️ **Important**: This application requires administrator privileges to modify registry entries.
+          
+          ### Commit Messages Guide
+          To control version increments in your commits, use these markers:
+          - `(MAJOR)` in commit message → Breaking changes (e.g., v1.0.0 → v2.0.0)
+          - `(MINOR)` in commit message → New features (e.g., v1.0.0 → v1.1.0)
+          - No marker → Bug fixes/patches (e.g., v1.0.0 → v1.0.1)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
