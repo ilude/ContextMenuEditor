@@ -2,8 +2,28 @@ name: Build and Release
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - '**.cs'
+      - '**.csproj'
+      - '**.xaml'
+      - '**.sln'
+      - 'app.manifest'
+      - 'Resources/**'
+      - '.github/workflows/build-release.yml'
     tags:
       - 'v*.*.*'  # Trigger on version tags like v1.0.0
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.cs'
+      - '**.csproj'
+      - '**.xaml'
+      - '**.sln'
+      - 'app.manifest'
+      - 'Resources/**'
   workflow_dispatch:  # Allow manual trigger
 
 permissions:
@@ -49,9 +69,10 @@ jobs:
       with:
         name: ContextMenuEditor-${{ env.VERSION }}
         path: ${{ env.ZIP_NAME }}
+        retention-days: 90
         
     - name: Create GitHub Release
-      if: startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
       with:
         files: ${{ env.ZIP_NAME }}
