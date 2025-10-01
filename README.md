@@ -30,6 +30,16 @@ A Windows application for managing context menu items.
 - **Visual Feedback**: Disabled items shown in gray italic text
 - **Column Management**: Auto-sizing and flexible column widths
 
+## Screenshots
+
+### Context Menus Management
+![Context Menus Tab](.github/assets/2025-10-01_19h06_37.png)
+*View and manage all Windows context menu items in a unified interface*
+
+### Startup Programs Management
+![Startup Programs Tab](.github/assets/2025-10-01_19h06_43.png)
+*Control which programs run at Windows startup*
+
 ## Usage
 
 ### Enable/Disable Context Menu Items
