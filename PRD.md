@@ -3,7 +3,7 @@
 ## Overview
 Context Menu Editor is a Windows GUI application that allows users to easily manage, edit, and customize context menu items and startup programs through an intuitive interface.
 
-**Status**: 🚧 **v1.1 IN DEVELOPMENT** - Adding Windows Startup Management  
+**Status**: ✅ **v1.1 COMPLETED** - Windows Startup Management with UI Improvements  
 **v1.0**: ✅ COMPLETED - See Implementation Summary section below
 
 ## Product Vision
@@ -37,12 +37,13 @@ To provide Windows users with a simple, safe, and comprehensive tool for managin
   - Permanently removes registry keys from all tracked locations
   - Confirmation dialog with warning message
   - Removes item from UI on successful deletion
-- ✅ **View Details**: DataGrid displays registry key, program name, menu text, publisher, and file path
-- ✅ **Backup to .REG File**: Changed from "Save to text file" to "Backup Registry Entries"
+- ✅ **View Details**: DataGrid displays registry key, program name, menu text, publisher, and command path
+- ✅ **Export to .REG File**: Context-specific "Export Context Menus" button
   - Exports all context menu items to a standard Windows .REG file
   - Includes all registry values, subkeys, and command entries
   - Restorable by double-clicking the .REG file
   - Timestamped filename (e.g., `ContextMenuBackup_20251001_143052.reg`)
+- ✅ **Quote Stripping**: Clean display of command paths without leading/trailing quotes via StripQuotesConverter
 - ✅ **Multi-Selection**: DataGrid supports Ctrl+Click and Shift+Click for selecting multiple items
 - ✅ **UAC Elevation**: Application requires administrator privileges via app.manifest for registry modifications
 
@@ -60,27 +61,28 @@ To provide Windows users with a simple, safe, and comprehensive tool for managin
 - Keyboard shortcuts
 - Custom context menu creation and editing
 
-### 5. Windows Startup Management 🚧 **IN DEVELOPMENT (v1.1)**
-- 🚧 **Separate Tab Interface**: Dedicated "Startup Programs" tab alongside "Context Menus" tab
-- 🚧 **Startup Discovery**: Discovers startup items from:
+### 5. Windows Startup Management ✅ **IMPLEMENTED (v1.1)**
+- ✅ **Separate Tab Interface**: Dedicated "Startup Programs" tab alongside "Context Menus" tab
+- ✅ **Startup Discovery**: Discovers startup items from:
   - `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
   - `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run`
   - `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunOnce`
   - `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce`
-- 🚧 **Enable/Disable Startup Items**: 
+- ✅ **Enable/Disable Startup Items**: 
   - Uses Windows 10+ `StartupApproved\Run` mechanism for disable tracking
   - Visual feedback with disabled items shown in gray italic
   - Requires admin rights for system-level items
-- 🚧 **Delete Startup Items**: Permanently removes from Run/RunOnce with confirmation
-- 🚧 **Backup to .REG File**: Export startup registry entries for restoration
-- 🚧 **Grid Display**: Columns: Enabled (checkbox), Name, Publisher, Command, Location (UserRun/SystemRun/etc)
-- 🚧 **Windows System Filtering**: Filters out built-in Windows startup programs
-- 🚧 **Publisher Detection**: Auto-detects software vendors from common path patterns
+- ✅ **Delete Startup Items**: Permanently removes from Run/RunOnce with confirmation
+- ✅ **Export to .REG File**: Context-specific "Export Startup Items" button for registry backup
+- ✅ **Grid Display**: Columns: Enabled (checkbox), Name, Publisher, Command, Location (UserRun/SystemRun/etc)
+- ✅ **Windows System Filtering**: Filters out built-in Windows startup programs
+- ✅ **Publisher Detection**: Auto-detects software vendors from common path patterns
+- ✅ **Quote Stripping**: Clean display of command paths without leading/trailing quotes
 
 ### 4. Essential Features ✅ **IMPLEMENTED**
 - ✅ **Column Sorting**: DataGrid supports sorting by clicking any column header
-- ✅ **Column Width Management**: Menu Text auto-sizes to content, File column takes remaining space
-- ✅ **Registry Backup**: "Backup Registry Entries" button exports complete .REG file for restoration
+- ✅ **Column Width Management**: Menu Text auto-sizes to content, Command column takes remaining space
+- ✅ **Registry Export**: Context-specific export buttons ("Export Context Menus" / "Export Startup Items") for .REG file backup
 - ✅ **Safety Features**: 
   - Confirmation dialogs for delete operations
   - All registry values preserved in .REG backup files
@@ -109,10 +111,11 @@ To provide Windows users with a simple, safe, and comprehensive tool for managin
 - ✅ **Architecture**: MVVM (Model-View-ViewModel) pattern with dependency injection
 - ✅ **Language**: C# 12 with nullable reference types enabled
 - ✅ **IDE**: Visual Studio Code (not Visual Studio)
-- ✅ **Privileges**: Requires administrator mode (app.manifest with requireAdministrator)
+- ✅ **Privileges**: Programmatic elevation with UAC prompt (app.manifest with asInvoker, elevation check in App.xaml.cs)
 - ✅ **Dependencies**: 
   - Microsoft.Win32.Registry v5.0.0
   - P/Invoke: shlwapi.dll (SHLoadIndirectString), dwmapi.dll (DwmSetWindowAttribute)
+- ✅ **Elevation Helper**: Cross-platform elevation detection using WindowsIdentity/WindowsPrincipal
 
 ### Performance Requirements
 - **Startup Time**: Application should launch within 2 seconds
@@ -128,23 +131,30 @@ To provide Windows users with a simple, safe, and comprehensive tool for managin
 
 ## User Interface Requirements
 
-### Main Window Layout ✅ **IMPLEMENTED** with 🚧 **Tabs for Separate Features**
+### Main Window Layout ✅ **IMPLEMENTED** with Tabs for Separate Features
 - ✅ **Tab-Based Navigation**: Separate tabs for independent features
   - **Context Menus Tab**: Single unified DataGrid with Type column (File/Directory/Drive/Background)
-  - 🚧 **Startup Programs Tab**: Dedicated view for Windows startup management
+  - **Startup Programs Tab**: Dedicated view for Windows startup management
   - **Design Decision**: Tabs for completely different features (context menus vs. startup), unified view within each feature
-- ✅ **Data Grid View**: Displays:
+- ✅ **Data Grid View (Context Menus)**: Displays:
   - **Enabled Column**: Checkbox with INotifyPropertyChanged binding for instant toggle
   - **Type Column**: Shows File, Directory, Drive, or Background
   - **Menu Text Column**: User-friendly display name (what appears in context menu), auto-width
   - **Key Column**: Registry key identifier
   - **Publisher Column**: Software vendor/creator (auto-detected)
-  - **File Column**: Path to executable, takes remaining space, minimum 150px width
+  - **Command Column**: Path to executable with quotes stripped, takes remaining space, minimum 150px width
+- ✅ **Data Grid View (Startup Programs)**: Displays:
+  - **Enabled Column**: Checkbox with INotifyPropertyChanged binding
+  - **Name Column**: Startup item name
+  - **Publisher Column**: Software vendor (auto-detected)
+  - **Command Column**: Executable path with quotes stripped
+  - **Location Column**: UserRun, SystemRun, UserRunOnce, or SystemRunOnce
 - ✅ **Action Buttons Panel** (Right side, dark-styled border):
-  - **Enable**: Removes LegacyDisable from all registry locations
-  - **Disable**: Adds LegacyDisable to all registry locations, grays out row
+  - **Enable**: Removes LegacyDisable (context menus) or StartupApproved flag (startup)
+  - **Disable**: Adds LegacyDisable or StartupApproved flag, grays out row
   - **Delete**: Permanently removes registry keys with confirmation dialog
-  - **Backup Registry Entries**: Exports to .REG file with SaveFileDialog
+  - **Export Context Menus** / **Export Startup Items**: Context-specific labels for .REG file export
+  - **Refresh**: Reloads items from registry
 - ✅ **Header**: Theme toggle button (🌙 Light/Dark) - no explanatory text for cleaner UI
 - ✅ **Status Bar**: Shows count of loaded items
 
@@ -302,25 +312,26 @@ Context Menu Editor v1.0 successfully provides Windows users with a clean, power
 
 ---
 
-## v1.1 Development Notes (In Progress)
+## v1.1 Implementation Summary
 
-### New Feature: Windows Startup Management
+### New Feature: Windows Startup Management ✅ **COMPLETED**
 
 **Goal**: Expand the application to manage Windows startup programs, following the same architectural patterns and UI principles as the context menu management.
 
-**Implementation Approach**:
+**Implementation Details**:
 1. **Separate Tab**: Added "Startup Programs" tab alongside "Context Menus" tab
    - Each tab represents a completely different feature
    - Maintains design principle: unified view within each feature, tabs for separate features
 2. **New Models**: `StartupItem` with properties: Name, Command, Publisher, Location, IsEnabled, RegistryPath
+   - `StartupLocation` enum: UserRun, SystemRun, UserRunOnce, SystemRunOnce
 3. **New Service**: `StartupService` implementing `IStartupService` for registry operations
    - Discovers items from Run and RunOnce keys (User and System level)
    - Enable/Disable using Windows 10+ `StartupApproved` mechanism
    - Delete operations with confirmation
-   - Backup to .REG file format
+   - Export to .REG file format
 4. **New ViewModel**: `StartupViewModel` following same pattern as `MainViewModel`
    - ObservableCollection of startup items
-   - Enable/Disable/Delete/Backup/Refresh commands
+   - Enable/Disable/Delete/Export/Refresh commands
    - Status messages and loading states
 5. **New View**: `StartupView` UserControl with same layout as context menu view
    - DataGrid with columns: Enabled, Name, Publisher, Command, Location
@@ -339,11 +350,54 @@ Context Menu Editor v1.0 successfully provides Windows users with a clean, power
 - **System RunOnce**: `HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce`
 - **Disable Tracking**: `HKCU/HKLM\...\Explorer\StartupApproved\Run` (Windows 10+)
 
-**Testing Status**: 🚧 In Progress
-- ✅ Code compiles successfully
-- ⏳ Runtime testing with admin privileges required
-- ⏳ Verify enable/disable functionality
-- ⏳ Test delete operations
-- ⏳ Validate backup/restore workflow
+**Elevation Enhancement**:
+- **Programmatic UAC Elevation**: Changed from manifest `requireAdministrator` to `asInvoker`
+  - `ElevationHelper.cs`: Cross-platform elevation detection using WindowsIdentity/WindowsPrincipal
+  - `App.xaml.cs`: Checks elevation on startup, prompts for UAC if needed
+  - **Benefit**: Allows `dotnet run` to work without running IDE as admin
+  - Inspired by: https://anthonysimmon.com/building-wpf-app-elevation-uac/
 
-**Version**: This will be released as v1.1 using semantic versioning (MINOR) marker in commit message.
+**UI Improvements**:
+- **Context-Specific Export Buttons**: 
+  - "Export Context Menus" on Context Menus tab
+  - "Export Startup Items" on Startup Programs tab
+  - Previous generic "Backup Registry Entries" was unclear
+- **Consistent Column Naming**: 
+  - Changed "File" to "Command" on Context Menus tab
+  - Both tabs now use "Command" for executable paths
+- **Quote Stripping**:
+  - `StripQuotesConverter.cs`: IValueConverter to remove leading/trailing quotes
+  - Applied to Command columns on both tabs
+  - Cleaner visual display of file paths
+
+**Project Structure Additions**:
+```
+ContextMenuEditor/
+├── Models/
+│   └── StartupItem.cs                    # Startup program data model
+├── ViewModels/
+│   └── StartupViewModel.cs               # MVVM ViewModel for startup tab
+├── Views/
+│   └── StartupView.xaml/.xaml.cs         # Startup Programs tab UI
+├── Services/
+│   ├── IStartupService.cs                # Startup service interface
+│   └── StartupService.cs                 # Startup registry operations
+└── Utilities/
+    ├── ElevationHelper.cs                # UAC elevation detection/launching
+    └── StripQuotesConverter.cs           # WPF value converter for quotes
+```
+
+**Code Commits** (v1.1):
+1. `7c25e9a` - (MINOR) Add programmatic elevation and remove requireAdministrator
+2. `f8b0e6a` - Rename backup buttons for clarity: Export Context/Startup
+3. `63ff368` - Improve UI: Rename columns to Command and strip quotes
+
+**Testing Status**: ✅ Code Complete, ⏳ Awaiting Runtime Testing
+- ✅ Code compiles successfully
+- ✅ All changes committed and pushed
+- ⏳ Runtime testing with UAC elevation prompt
+- ⏳ Verify enable/disable functionality on actual startup items
+- ⏳ Test delete operations
+- ⏳ Validate export/restore workflow with .REG files
+
+**Version**: v1.1.0 (MINOR version bump per semantic versioning)
