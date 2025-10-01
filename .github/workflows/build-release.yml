@@ -110,6 +110,25 @@ jobs:
         path: ${{ env.ZIP_NAME }}
         retention-days: 90
         
+    - name: Create and push version tag
+      if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
+      run: |
+        $version = "v${{ steps.version.outputs.version }}"
+        $isTagged = "${{ steps.version.outputs.is_tagged }}"
+        
+        if ($isTagged -eq "false") {
+          Write-Host "Creating and pushing tag: $version"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a $version -m "Release $version"
+          git push origin $version
+        } else {
+          Write-Host "Commit already tagged, skipping tag creation"
+        }
+      shell: pwsh
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: Create GitHub Release
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
