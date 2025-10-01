@@ -2,7 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:ContextMenuEditor.ViewModels"
+             xmlns:util="clr-namespace:ContextMenuEditor.Utilities"
              Background="{DynamicResource WindowBackgroundBrush}">
+    
+    <UserControl.Resources>
+        <util:StripQuotesConverter x:Key="StripQuotesConverter"/>
+    </UserControl.Resources>
     
     <UserControl.DataContext>
         <vm:StartupViewModel/>
@@ -40,7 +45,7 @@
                                       Binding="{Binding Publisher}" 
                                       Width="150"/>
                     <DataGridTextColumn Header="Command" 
-                                      Binding="{Binding Command}" 
+                                      Binding="{Binding Command, Converter={StaticResource StripQuotesConverter}}" 
                                       Width="*"
                                       MinWidth="200"/>
                     <DataGridTextColumn Header="Location" 
@@ -67,7 +72,7 @@
                             Command="{Binding DeleteCommand}"
                             IsEnabled="{Binding HasSelection}"/>
                     <Separator Margin="0,8"/>
-                    <Button Content="Backup Startup Items" 
+                    <Button Content="Export Startup Items" 
                             Command="{Binding BackupCommand}"/>
                 </StackPanel>
             </Border>
