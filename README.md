@@ -90,18 +90,11 @@ A Windows application for managing context menu items.
 - **Theme System**: Custom theme manager with Windows DWM integration
 - **Resource Resolution**: P/Invoke for resolving DLL resource strings
 
-## Version
-
-Version 1.0.0
-
 ## Copyright
 
-Copyright © 2025 Eagle Technology Group
+Copyright © 2025 HomeChicken Software
 
 ## Support
 
 For issues, questions, or feature requests, please visit the project repository on GitHub.
 
----
-
-**Made with ❤️ following SOLID principles and "simple over complex" philosophy**
