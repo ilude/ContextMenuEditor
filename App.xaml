@@ -136,6 +136,49 @@
             <Style TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
             </Style>
+            
+            <Style TargetType="TabControl">
+                <Setter Property="Background" Value="{DynamicResource WindowBackgroundBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+            </Style>
+            
+            <Style TargetType="TabItem">
+                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="Margin" Value="0,0,2,0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TabItem">
+                            <Border Name="Border" 
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1,1,1,0"
+                                    CornerRadius="3,3,0,0"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter x:Name="ContentSite" 
+                                                VerticalAlignment="Center" 
+                                                HorizontalAlignment="Center"
+                                                ContentSource="Header"
+                                                TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Panel.ZIndex" Value="100"/>
+                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource WindowBackgroundBrush}"/>
+                                    <Setter TargetName="Border" Property="BorderThickness" Value="1,1,1,0"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -1,12 +1,13 @@
 # Context Menu Editor - Product Requirements Document
 
 ## Overview
-Context Menu Editor is a Windows GUI application that allows users to easily manage, edit, and customize context menu items for files, directories, and drives through an intuitive interface.
+Context Menu Editor is a Windows GUI application that allows users to easily manage, edit, and customize context menu items and startup programs through an intuitive interface.
 
-**Status**: ✅ **v1.0 COMPLETED** - See Implementation Summary section below
+**Status**: 🚧 **v1.1 IN DEVELOPMENT** - Adding Windows Startup Management  
+**v1.0**: ✅ COMPLETED - See Implementation Summary section below
 
 ## Product Vision
-To provide Windows users with a simple, safe, and comprehensive tool for customizing their right-click context menus without requiring direct registry editing knowledge.
+To provide Windows users with a simple, safe, and comprehensive tool for managing their Windows customizations (context menus and startup programs) without requiring direct registry editing knowledge.
 
 ## Target Audience
 - **Primary**: Power users and system administrators who want to customize their Windows experience
@@ -59,6 +60,23 @@ To provide Windows users with a simple, safe, and comprehensive tool for customi
 - Keyboard shortcuts
 - Custom context menu creation and editing
 
+### 5. Windows Startup Management 🚧 **IN DEVELOPMENT (v1.1)**
+- 🚧 **Separate Tab Interface**: Dedicated "Startup Programs" tab alongside "Context Menus" tab
+- 🚧 **Startup Discovery**: Discovers startup items from:
+  - `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`
+  - `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run`
+  - `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunOnce`
+  - `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce`
+- 🚧 **Enable/Disable Startup Items**: 
+  - Uses Windows 10+ `StartupApproved\Run` mechanism for disable tracking
+  - Visual feedback with disabled items shown in gray italic
+  - Requires admin rights for system-level items
+- 🚧 **Delete Startup Items**: Permanently removes from Run/RunOnce with confirmation
+- 🚧 **Backup to .REG File**: Export startup registry entries for restoration
+- 🚧 **Grid Display**: Columns: Enabled (checkbox), Name, Publisher, Command, Location (UserRun/SystemRun/etc)
+- 🚧 **Windows System Filtering**: Filters out built-in Windows startup programs
+- 🚧 **Publisher Detection**: Auto-detects software vendors from common path patterns
+
 ### 4. Essential Features ✅ **IMPLEMENTED**
 - ✅ **Column Sorting**: DataGrid supports sorting by clicking any column header
 - ✅ **Column Width Management**: Menu Text auto-sizes to content, File column takes remaining space
@@ -110,9 +128,11 @@ To provide Windows users with a simple, safe, and comprehensive tool for customi
 
 ## User Interface Requirements
 
-### Main Window Layout ✅ **IMPLEMENTED** (Simplified from CCleaner Design)
-- ✅ **Single Unified View**: No tabs - single DataGrid with Type column for all context menu types
-  - **Design Decision**: Simpler, more efficient than tabs. Users can sort by Type to group items.
+### Main Window Layout ✅ **IMPLEMENTED** with 🚧 **Tabs for Separate Features**
+- ✅ **Tab-Based Navigation**: Separate tabs for independent features
+  - **Context Menus Tab**: Single unified DataGrid with Type column (File/Directory/Drive/Background)
+  - 🚧 **Startup Programs Tab**: Dedicated view for Windows startup management
+  - **Design Decision**: Tabs for completely different features (context menus vs. startup), unified view within each feature
 - ✅ **Data Grid View**: Displays:
   - **Enabled Column**: Checkbox with INotifyPropertyChanged binding for instant toggle
   - **Type Column**: Shows File, Directory, Drive, or Background
@@ -279,3 +299,51 @@ ContextMenuEditor/
 
 ## Conclusion
 Context Menu Editor v1.0 successfully provides Windows users with a clean, powerful tool to manage their context menus efficiently and safely, eliminating the need for direct registry editing while maintaining full control over the user experience. The application delivers on its core promise with a focus on simplicity, safety, and usability.
+
+---
+
+## v1.1 Development Notes (In Progress)
+
+### New Feature: Windows Startup Management
+
+**Goal**: Expand the application to manage Windows startup programs, following the same architectural patterns and UI principles as the context menu management.
+
+**Implementation Approach**:
+1. **Separate Tab**: Added "Startup Programs" tab alongside "Context Menus" tab
+   - Each tab represents a completely different feature
+   - Maintains design principle: unified view within each feature, tabs for separate features
+2. **New Models**: `StartupItem` with properties: Name, Command, Publisher, Location, IsEnabled, RegistryPath
+3. **New Service**: `StartupService` implementing `IStartupService` for registry operations
+   - Discovers items from Run and RunOnce keys (User and System level)
+   - Enable/Disable using Windows 10+ `StartupApproved` mechanism
+   - Delete operations with confirmation
+   - Backup to .REG file format
+4. **New ViewModel**: `StartupViewModel` following same pattern as `MainViewModel`
+   - ObservableCollection of startup items
+   - Enable/Disable/Delete/Backup/Refresh commands
+   - Status messages and loading states
+5. **New View**: `StartupView` UserControl with same layout as context menu view
+   - DataGrid with columns: Enabled, Name, Publisher, Command, Location
+   - Action buttons panel on the right
+   - Status bar at bottom
+6. **Consistent Patterns**: Reuses existing infrastructure
+   - ViewModelBase for INotifyPropertyChanged
+   - RelayCommand for commands
+   - Same styling and theming from App.xaml
+   - Similar enable/disable/delete workflows
+
+**Registry Locations**:
+- **User Run**: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+- **System Run**: `HKLM\Software\Microsoft\Windows\CurrentVersion\Run`
+- **User RunOnce**: `HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce`
+- **System RunOnce**: `HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce`
+- **Disable Tracking**: `HKCU/HKLM\...\Explorer\StartupApproved\Run` (Windows 10+)
+
+**Testing Status**: 🚧 In Progress
+- ✅ Code compiles successfully
+- ⏳ Runtime testing with admin privileges required
+- ⏳ Verify enable/disable functionality
+- ⏳ Test delete operations
+- ⏳ Validate backup/restore workflow
+
+**Version**: This will be released as v1.1 using semantic versioning (MINOR) marker in commit message.
