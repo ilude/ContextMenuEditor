@@ -13,7 +13,7 @@ on:
       - 'Resources/**'
       - '.github/workflows/build-release.yml'
     tags:
-      - 'v*.*.*'  # Trigger on version tags like v1.0.0
+      - 'v*.*.*'  # Only for creating releases, not building
   pull_request:
     branches:
       - main
@@ -35,6 +35,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
     
     steps:
@@ -128,21 +129,74 @@ jobs:
       shell: pwsh
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Extract version from tag
+      id: version
+      run: |
+        $tagName = "${{ github.ref_name }}"
+        $version = $tagName -replace '^v', ''
+        echo "VERSION=$version" >> $env:GITHUB_ENV
+        echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
+      shell: pwsh
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        cache: true
+        cache-dependency-path: '**/packages.lock.json'
         
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+        
+    - name: Restore dependencies
+      run: dotnet restore ContextMenuEditor.csproj
+      
+    - name: Build application
+      run: dotnet build ContextMenuEditor.csproj --configuration Release --no-restore /p:Version=${{ env.VERSION }}
+      
+    - name: Publish application
+      run: dotnet publish ContextMenuEditor.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish /p:Version=${{ env.VERSION }}
+      
+    - name: Copy README to publish folder
+      run: Copy-Item README.md ./publish/
+      shell: pwsh
+      
+    - name: Create release package
+      run: |
+        $version = "${{ env.VERSION }}"
+        $zipName = "ContextMenuEditor-v$version-win-x64.zip"
+        Compress-Archive -Path ./publish/* -DestinationPath $zipName
+        echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+      shell: pwsh
+      
     - name: Create GitHub Release
-      if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
       with:
         files: ${{ env.ZIP_NAME }}
         draft: false
         prerelease: false
         generate_release_notes: true
-        name: Context Menu Editor ${{ env.VERSION }}
+        name: Context Menu Editor v${{ env.VERSION }}
         body: |
-          ## Context Menu Editor ${{ env.VERSION }}
+          ## Context Menu Editor v${{ env.VERSION }}
           
-          **Semantic Version**: `${{ steps.version.outputs.version }}`
-          **Version Type**: ${{ steps.version.outputs.version_type }}
+          **Semantic Version**: `${{ env.VERSION }}`
           
           ### Installation
           1. Download the ZIP file below
