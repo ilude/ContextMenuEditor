@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Linq;
 
 namespace ContextMenuEditor.Models;
 
@@ -11,6 +12,7 @@ namespace ContextMenuEditor.Models;
 public class ContextMenuItem : INotifyPropertyChanged
 {
     private bool _isEnabled;
+    private VisibilityState _visibility = VisibilityState.Normal;
 
     /// <summary>
     /// Gets or sets whether this context menu item is currently enabled.
@@ -54,9 +56,71 @@ public class ContextMenuItem : INotifyPropertyChanged
     public ContextMenuType MenuType { get; set; }
 
     /// <summary>
+    /// Aggregated set of menu types this item applies to (e.g., File, Directory, Background).
+    /// This enables deduplication across contexts while still surfacing coverage in the UI.
+    /// </summary>
+    public List<ContextMenuType> MenuTypes { get; set; } = new();
+
+    /// <summary>
+    /// Returns a comma-separated string of the aggregated menu types for display.
+    /// Falls back to the single MenuType if MenuTypes is empty (backward compatible).
+    /// </summary>
+    public string TypesDisplay
+    {
+        get
+        {
+            if (MenuTypes != null && MenuTypes.Count > 0)
+            {
+                var ordered = MenuTypes.Distinct().OrderBy(t => t.ToString());
+                return string.Join(", ", ordered);
+            }
+            return MenuType.ToString();
+        }
+    }
+
+    /// <summary>
+    /// Display-friendly target(s) where this item appears. Uses "Empty" instead of "Background".
+    /// Aggregates multiple targets when present.
+    /// </summary>
+    public string TargetDisplay
+    {
+        get
+        {
+            IEnumerable<ContextMenuType> types = (MenuTypes != null && MenuTypes.Count > 0)
+                ? MenuTypes.Distinct()
+                : new[] { MenuType };
+
+            var mapped = types.Select(t => t == ContextMenuType.Background ? "Empty" : t.ToString());
+            return string.Join(", ", mapped.OrderBy(s => s));
+        }
+    }
+
+    /// <summary>
     /// Gets or sets whether this is a system-level (as opposed to user-level) entry.
     /// </summary>
     public bool IsSystemLevel { get; set; }
+
+    /// <summary>
+    /// Visibility state in Explorer (Normal, Extended, Hidden). Extended shows when Shift is held.
+    /// </summary>
+    public VisibilityState Visibility
+    {
+        get => _visibility;
+        set
+        {
+            if (_visibility != value)
+            {
+                _visibility = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsExtended));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Convenience flag: true if the item is only visible when pressing Shift (Extended).
+    /// </summary>
+    public bool IsExtended => Visibility == VisibilityState.Extended;
 
     /// <summary>
     /// Gets or sets all registry locations where this item exists.
@@ -107,4 +171,14 @@ public enum ContextMenuType
     Drive,
     Background,
     AllFiles
+}
+
+/// <summary>
+/// Visibility state of a context menu item in Explorer.
+/// </summary>
+public enum VisibilityState
+{
+    Normal,
+    Extended,
+    Hidden
 }

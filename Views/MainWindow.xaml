@@ -11,6 +11,7 @@
     
     <Window.Resources>
         <util:StripQuotesConverter x:Key="StripQuotesConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </Window.Resources>
     
     <Window.DataContext>
@@ -41,48 +42,76 @@
             <!-- Context Menus Tab -->
             <TabItem Header="Context Menus">
                 <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Style="{StaticResource MainGridColumn}"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Style="{StaticResource RightActionColumn}"/>
                     </Grid.ColumnDefinitions>
                     
                     <!-- Single DataGrid with all items -->
-                    <DataGrid Grid.Column="0" Margin="8"
+                    <DataGrid Grid.Row="0" Grid.Column="0" Margin="8"
                               ItemsSource="{Binding AllMenuItems}"
                               SelectedItem="{Binding SelectedItem}"
-                              SelectionChanged="DataGrid_SelectionChanged">
+                              SelectionChanged="DataGrid_SelectionChanged"
+                              >
                         <DataGrid.Columns>
                             <DataGridCheckBoxColumn Header="Enabled" 
                                                    Binding="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                    Width="60"/>
-                            <DataGridTextColumn Header="Type" 
-                                              Binding="{Binding MenuType}" 
-                                              Width="80"/>
+                            <DataGridTextColumn Width="120">
+                                <DataGridTextColumn.Header>
+                                    <TextBlock Text="Target" 
+                                               ToolTip="Empty = folder background (empty space in a folder window)"/>
+                                </DataGridTextColumn.Header>
+                                <DataGridTextColumn.Binding>
+                                    <Binding Path="TargetDisplay"/>
+                                </DataGridTextColumn.Binding>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="Menu Text" 
                                               Binding="{Binding ProgramName}" 
                                               Width="Auto"
                                               MinWidth="150"/>
-                            <DataGridTextColumn Header="Key" 
-                                              Binding="{Binding Key}" 
-                                              Width="120"/>
+                            <DataGridTemplateColumn Width="60">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="Shift" 
+                                               ToolTip="Requires Shift+Right Click to appear"/>
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Ellipse Width="10" Height="10"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center"
+                                                 Fill="#28a745"
+                                                 StrokeThickness="0"
+                                                 Visibility="{Binding IsExtended, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <Ellipse.ToolTip>
+                                                <ToolTip Content="Requires Shift+Right Click to appear"/>
+                                            </Ellipse.ToolTip>
+                                        </Ellipse>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Publisher" 
                                               Binding="{Binding Publisher}" 
                                               Width="150"/>
                             <DataGridTextColumn Header="Command" 
                                               Binding="{Binding FilePath, Converter={StaticResource StripQuotesConverter}}" 
-                                              Width="*"
+                                              Width="Auto"
                                               MinWidth="150"/>
                         </DataGrid.Columns>
                     </DataGrid>
                     
                     <!-- Vertical Separator -->
-                    <GridSplitter Grid.Column="1" Width="1" 
+                    <GridSplitter Grid.Row="0" Grid.Column="1" Width="1" 
                                  HorizontalAlignment="Center" VerticalAlignment="Stretch"
                                  Background="{DynamicResource BorderBrush}"/>
                     
                     <!-- Action Buttons Panel -->
-                    <Border Grid.Column="2" Background="{DynamicResource WindowBackgroundBrush}">
+                    <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource ActionPanelBorder}">
                         <StackPanel Margin="8" VerticalAlignment="Top">
                             <Button Content="Enable" 
                                     Command="{Binding EnableCommand}"
@@ -100,7 +129,7 @@
                     </Border>
                     
                     <!-- Status Bar for Context Menus -->
-                    <StatusBar Grid.ColumnSpan="3" VerticalAlignment="Bottom">
+                    <StatusBar Grid.Row="1" Grid.ColumnSpan="3">
                         <StatusBarItem>
                             <TextBlock Text="{Binding StatusMessage}"/>
                         </StatusBarItem>

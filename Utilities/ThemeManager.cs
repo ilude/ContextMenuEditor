@@ -84,6 +84,11 @@ public class ThemeManager
         // Selection colors
         dict["SelectionBackgroundBrush"] = new SolidColorBrush(Color.FromRgb(51, 153, 255));
         dict["SelectionInactiveBrush"] = new SolidColorBrush(Color.FromRgb(70, 70, 74));
+
+    // ScrollBar colors (dark)
+    dict["ScrollBarTrackBrush"] = new SolidColorBrush(Color.FromRgb(35, 35, 35));
+    dict["ScrollBarThumbBrush"] = new SolidColorBrush(Color.FromRgb(90, 90, 90));
+    dict["ScrollBarThumbHoverBrush"] = new SolidColorBrush(Color.FromRgb(120, 120, 120));
     }
 
     private void ApplyLightTheme(ResourceDictionary dict)
@@ -110,6 +115,11 @@ public class ThemeManager
         // Selection colors
         dict["SelectionBackgroundBrush"] = new SolidColorBrush(Color.FromRgb(51, 153, 255));
         dict["SelectionInactiveBrush"] = new SolidColorBrush(Color.FromRgb(220, 220, 220));
+
+    // ScrollBar colors (light)
+    dict["ScrollBarTrackBrush"] = new SolidColorBrush(Color.FromRgb(234, 234, 234));
+    dict["ScrollBarThumbBrush"] = new SolidColorBrush(Color.FromRgb(192, 192, 192));
+    dict["ScrollBarThumbHoverBrush"] = new SolidColorBrush(Color.FromRgb(158, 158, 158));
     }
 
     public void ToggleTheme()

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using ContextMenuEditor.Models;
@@ -58,7 +59,9 @@ public class RegistryService : IRegistryService
                 { 
                     item.Key, 
                     // Normalize file path for comparison (remove quotes, lowercase, trim)
-                    NormalizedPath = item.FilePath?.Trim('"').ToLowerInvariant().Split(' ')[0] ?? string.Empty
+                    NormalizedPath = item.FilePath?.Trim('"').ToLowerInvariant().Split(' ')[0] ?? string.Empty,
+                    // Split into separate rows per concrete menu type (File, Directory, Background, Drive)
+                    TypeGroup = item.MenuType
                 })
                 .Select(group =>
                 {
@@ -70,9 +73,16 @@ public class RegistryService : IRegistryService
                         .SelectMany(item => item.RegistryLocations)
                         .ToList();
                     
+                    // Aggregate all menu types for display clarity (now single type per group)
+                    var allTypes = group.Select(g => g.MenuType).Distinct().ToList();
+                    primary.MenuTypes = allTypes;
+                    
+                    // Notify TypesDisplay binding if used
+                    // (ViewModels bind to the collection so runtime INotify is sufficient)
+                    
                     return primary;
                 })
-                .OrderBy(item => item.MenuType)
+                .OrderBy(item => item.MenuType == ContextMenuType.Background ? "Empty" : item.MenuType.ToString())
                 .ThenBy(item => item.ProgramName)
                 .ToList();
 
@@ -163,14 +173,56 @@ public class RegistryService : IRegistryService
         // Remove keyboard shortcut markers (& character)
         displayName = displayName.Replace("&", "");
 
-        // Get command path
+        // Get command path (shell verbs) or resolve shellex handler to DLL via CLSID
         string? commandPath = null;
         using (var commandKey = key.OpenSubKey("command"))
         {
             commandPath = commandKey?.GetValue("") as string;
         }
 
-        // Filter out items without a file path - they're usually just submenus or organizational keys
+        // If no explicit command, try resolving shellex ContextMenuHandlers CLSID -> InprocServer32
+        if (string.IsNullOrWhiteSpace(commandPath))
+        {
+            if (basePath.IndexOf("shellex\\ContextMenuHandlers", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                // Default value is commonly a CLSID like {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}
+                var handlerRef = key.GetValue("") as string;
+                if (!string.IsNullOrWhiteSpace(handlerRef))
+                {
+                    // Some entries may prefix with 'CLSID\\', normalize to just the GUID token
+                    var clsid = handlerRef.Trim();
+                    const string clsidPrefix = "CLSID\\";
+                    if (clsid.StartsWith(clsidPrefix, StringComparison.OrdinalIgnoreCase))
+                        clsid = clsid.Substring(clsidPrefix.Length);
+
+                    // Try HKEY_CLASSES_ROOT\CLSID\{guid}\InprocServer32
+                    try
+                    {
+                        using var clsidKey = Registry.ClassesRoot.OpenSubKey($"CLSID\\{clsid}\\InprocServer32");
+                        var inprocPath = clsidKey?.GetValue("") as string;
+                        if (!string.IsNullOrWhiteSpace(inprocPath))
+                        {
+                            // Expand environment vars in registered path
+                            commandPath = Environment.ExpandEnvironmentVariables(inprocPath);
+                        }
+
+                        // If displayName looks like a GUID, try to resolve a friendly name
+                        if (LooksLikeGuid(displayName) || LooksLikeGuid(keyName))
+                        {
+                            var friendly = ResolveShellexDisplayName(clsid, commandPath, keyName);
+                            if (!string.IsNullOrWhiteSpace(friendly))
+                                displayName = friendly!;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error resolving shellex handler {handlerRef}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        // Still nothing resolvable – skip (likely submenu/organizational entry)
         if (string.IsNullOrWhiteSpace(commandPath))
             return null;
 
@@ -180,6 +232,17 @@ public class RegistryService : IRegistryService
 
         // Check if item is enabled (LegacyDisable key existence means it's disabled)
         var isEnabled = key.GetValue("LegacyDisable") == null;
+
+        // Determine visibility: Normal, Extended (shows on Shift), or Hidden by VelocityId
+        var visibility = VisibilityState.Normal;
+        if (key.GetValue("Extended") != null)
+        {
+            visibility = VisibilityState.Extended;
+        }
+        else if (key.GetValue("HideBasedOnVelocityId") != null)
+        {
+            visibility = VisibilityState.Hidden;
+        }
 
         // Try to determine publisher from the command path
         string? publisher = null;
@@ -204,9 +267,103 @@ public class RegistryService : IRegistryService
             Publisher = publisher,
             FilePath = commandPath,
             MenuType = menuType,
+            MenuTypes = new List<ContextMenuType> { menuType },
             IsSystemLevel = isSystemLevel,
+            Visibility = visibility,
             RegistryLocations = new List<RegistryLocation> { registryLocation }
         };
+    }
+
+    private bool LooksLikeGuid(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var t = value.Trim();
+        if (t.StartsWith("CLSID\\", StringComparison.OrdinalIgnoreCase))
+            t = t.Substring(6);
+        if (t.StartsWith("{") && t.EndsWith("}"))
+            t = t.Substring(1, t.Length - 2);
+        return Guid.TryParse(t, out _);
+    }
+
+    private string? ResolveShellexDisplayName(string clsid, string? inprocPath, string keyName)
+    {
+        // Normalize CLSID to {guid}
+        var normalized = clsid.Trim();
+        if (!normalized.StartsWith("{"))
+            normalized = "{" + normalized.Trim('{', '}') + "}";
+
+        // 1) CLSID\{guid}\LocalizedString or default
+        try
+        {
+            using (var clsidKey = Registry.ClassesRoot.OpenSubKey($"CLSID\\{normalized}"))
+            {
+                var loc = clsidKey?.GetValue("LocalizedString") as string;
+                if (!string.IsNullOrWhiteSpace(loc))
+                {
+                    var resolved = ResourceStringResolver.ResolveResourceString(loc);
+                    if (!string.IsNullOrWhiteSpace(resolved)) return resolved;
+                }
+
+                var def = clsidKey?.GetValue("") as string;
+                if (!string.IsNullOrWhiteSpace(def))
+                {
+                    var resolved = ResourceStringResolver.ResolveResourceString(def);
+                    if (!string.IsNullOrWhiteSpace(resolved)) return resolved;
+                }
+
+                using (var inproc = clsidKey?.OpenSubKey("InprocServer32"))
+                {
+                    var loc2 = inproc?.GetValue("LocalizedString") as string;
+                    if (!string.IsNullOrWhiteSpace(loc2))
+                    {
+                        var resolved = ResourceStringResolver.ResolveResourceString(loc2);
+                        if (!string.IsNullOrWhiteSpace(resolved)) return resolved;
+                    }
+                }
+            }
+        }
+        catch { }
+
+        // 2) Shell Extensions Approved friendly name
+        var approvedPaths = new[]
+        {
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved",
+            @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved"
+        };
+        foreach (var root in new[] { Registry.LocalMachine, Registry.CurrentUser })
+        {
+            foreach (var path in approvedPaths)
+            {
+                try
+                {
+                    using var ak = root.OpenSubKey(path);
+                    var val = ak?.GetValue(normalized) as string;
+                    if (!string.IsNullOrWhiteSpace(val)) return val;
+                }
+                catch { }
+            }
+        }
+
+        // 3) File description from DLL path
+        if (!string.IsNullOrWhiteSpace(inprocPath))
+        {
+            try
+            {
+                var info = FileVersionInfo.GetVersionInfo(inprocPath);
+                if (!string.IsNullOrWhiteSpace(info.FileDescription))
+                    return info.FileDescription;
+                if (!string.IsNullOrWhiteSpace(info.ProductName))
+                    return info.ProductName;
+            }
+            catch { }
+        }
+
+        // 4) If the registry subkey name is not a GUID, prefer it
+        if (!LooksLikeGuid(keyName))
+            return keyName;
+
+        // 5) Fall back to CLSID
+        return normalized;
     }
 
     private bool IsWindowsSystemProgram(string commandPath)

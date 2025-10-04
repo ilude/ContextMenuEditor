@@ -22,9 +22,9 @@
         <!-- Main Content Area -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Style="{StaticResource MainGridColumn}"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Style="{StaticResource RightActionColumn}"/>
             </Grid.ColumnDefinitions>
             
             <!-- DataGrid with startup items -->
@@ -32,7 +32,8 @@
                       x:Name="StartupDataGrid"
                       ItemsSource="{Binding StartupItems}"
                       SelectedItem="{Binding SelectedItem}"
-                      SelectionChanged="DataGrid_SelectionChanged">
+                      SelectionChanged="DataGrid_SelectionChanged"
+                      >
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn Header="Enabled" 
                                            Binding="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -46,8 +47,8 @@
                                       Width="150"/>
                     <DataGridTextColumn Header="Command" 
                                       Binding="{Binding Command, Converter={StaticResource StripQuotesConverter}}" 
-                                      Width="*"
-                                      MinWidth="200"/>
+                                      Width="Auto"
+                                      MinWidth="150"/>
                     <DataGridTextColumn Header="Location" 
                                       Binding="{Binding Location}" 
                                       Width="100"/>
@@ -60,7 +61,7 @@
                          Background="{DynamicResource BorderBrush}"/>
             
             <!-- Action Buttons Panel -->
-            <Border Grid.Column="2" Background="{DynamicResource WindowBackgroundBrush}">
+            <Border Grid.Column="2" Style="{StaticResource ActionPanelBorder}">
                 <StackPanel Margin="8" VerticalAlignment="Top">
                     <Button Content="Enable" 
                             Command="{Binding EnableCommand}"

@@ -7,6 +7,16 @@
         <ResourceDictionary>
             <!-- Converters -->
             <util:ThemeLabelConverter x:Key="ThemeLabelConverter"/>
+            <!-- Shared DataGrid column templates for consistency across views -->
+            <Style x:Key="ActionPanelBorder" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource WindowBackgroundBrush}"/>
+            </Style>
+            <Style x:Key="RightActionColumn" TargetType="ColumnDefinition">
+                <Setter Property="Width" Value="120"/>
+            </Style>
+            <Style x:Key="MainGridColumn" TargetType="ColumnDefinition">
+                <Setter Property="Width" Value="*"/>
+            </Style>
             
             <!-- Global styles and resources -->
             <Style TargetType="Window">
@@ -65,6 +75,17 @@
                 <Setter Property="AlternatingRowBackground" Value="{DynamicResource AlternateRowBackgroundBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
                 <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource GridLineBrush}"/>
+                <!-- Standardize scrolling behavior for all DataGrids -->
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+                <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+                <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+                <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                <!-- Use pixel-based scrolling with virtualization (recommended) -->
+                <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+                <!-- Default item-based scrolling avoids edge-cases with DataGrid template -->
+                <!-- Keep virtualization for performance -->
+                <Setter Property="EnableColumnVirtualization" Value="True"/>
+                <Setter Property="EnableRowVirtualization" Value="True"/>
             </Style>
             
             <Style TargetType="DataGridColumnHeader">
@@ -75,6 +96,8 @@
                 <Setter Property="Padding" Value="8,4"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <!-- Ensure header tooltips show with consistent style -->
+                <Setter Property="ToolTipService.ShowDuration" Value="30000"/>
             </Style>
             
             <Style TargetType="DataGridRow">
@@ -132,9 +155,76 @@
                 <Setter Property="Background" Value="{DynamicResource HeaderBackgroundBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
             </Style>
+
+            <!-- Themed ScrollBar template that preserves default behavior (line/page buttons, full-track thumb travel) -->
+            <Style TargetType="ScrollBar">
+                <Setter Property="Background" Value="{DynamicResource ScrollBarTrackBrush}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid Background="{TemplateBinding Background}">
+                                <DockPanel LastChildFill="True">
+                                    <!-- Line buttons at the ends -->
+                                    <RepeatButton x:Name="LineStart" Width="16" Height="16" Focusable="False" Background="Transparent" BorderBrush="Transparent" DockPanel.Dock="Left" Command="{x:Static ScrollBar.LineLeftCommand}"/>
+                                    <RepeatButton x:Name="LineEnd" Width="16" Height="16" Focusable="False" Background="Transparent" BorderBrush="Transparent" DockPanel.Dock="Right" Command="{x:Static ScrollBar.LineRightCommand}"/>
+                                    <!-- Track with page buttons and thumb -->
+                                    <Track x:Name="PART_Track"
+                                           Orientation="{TemplateBinding Orientation}"
+                                           Maximum="{TemplateBinding Maximum}"
+                                           Minimum="{TemplateBinding Minimum}"
+                                           Value="{TemplateBinding Value}"
+                                           ViewportSize="{TemplateBinding ViewportSize}">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton x:Name="PART_Decrease" Command="{x:Static ScrollBar.PageLeftCommand}" Background="{DynamicResource ScrollBarTrackBrush}" BorderBrush="Transparent" Focusable="False"/>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton x:Name="PART_Increase" Command="{x:Static ScrollBar.PageRightCommand}" Background="{DynamicResource ScrollBarTrackBrush}" BorderBrush="Transparent" Focusable="False"/>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb Focusable="False">
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Border x:Name="PART_Border" Background="{DynamicResource ScrollBarThumbBrush}" CornerRadius="2"/>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" TargetName="PART_Border" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                    </Track>
+                                </DockPanel>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <!-- Vertical orientation tweaks -->
+                                <Trigger Property="Orientation" Value="Vertical">
+                                    <Setter TargetName="LineStart" Property="DockPanel.Dock" Value="Top"/>
+                                    <Setter TargetName="LineEnd" Property="DockPanel.Dock" Value="Bottom"/>
+                                    <Setter TargetName="LineStart" Property="Command" Value="{x:Static ScrollBar.LineUpCommand}"/>
+                                    <Setter TargetName="LineEnd" Property="Command" Value="{x:Static ScrollBar.LineDownCommand}"/>
+                                    <Setter TargetName="PART_Decrease" Property="Command" Value="{x:Static ScrollBar.PageUpCommand}"/>
+                                    <Setter TargetName="PART_Increase" Property="Command" Value="{x:Static ScrollBar.PageDownCommand}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
             
             <Style TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+            </Style>
+
+            <!-- ToolTip styling to ensure readable contrast across themes -->
+            <Style TargetType="ToolTip">
+                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="8,6"/>
+                <Setter Property="HasDropShadow" Value="True"/>
             </Style>
             
             <Style TargetType="TabControl">
@@ -144,7 +234,8 @@
             </Style>
             
             <Style TargetType="TabItem">
-                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}"/>
+                <!-- Unselected appearance -->
+                <Setter Property="Background" Value="{DynamicResource HeaderBackgroundBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
                 <Setter Property="Padding" Value="12,6"/>
@@ -167,12 +258,25 @@
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Panel.ZIndex" Value="100"/>
-                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource WindowBackgroundBrush}"/>
+                                    <!-- Selected tab uses highlight surface color (light grey in dark mode) -->
+                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource ControlBackgroundBrush}"/>
                                     <Setter TargetName="Border" Property="BorderThickness" Value="1,1,1,0"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
                                 </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                                <!-- Hover highlight only for UNSELECTED tabs -->
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsMouseOver" Value="True"/>
+                                        <Condition Property="IsSelected" Value="False"/>
+                                    </MultiTrigger.Conditions>
+                                    <!-- Blue highlight on rollover for unselected tabs -->
+                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource SelectionBackgroundBrush}"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                </MultiTrigger>
+                                <!-- Slightly de-emphasize unselected tabs -->
+                                <Trigger Property="IsSelected" Value="False">
+                                    <Setter Property="Opacity" Value="0.9"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
