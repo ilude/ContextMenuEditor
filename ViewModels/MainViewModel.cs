@@ -24,6 +24,7 @@ public class MainViewModel : ViewModelBase
     private bool _isLoading;
     private bool _isDarkMode;
     private bool _includeWindowsSystemItems;
+    private bool _showComHandlers;
 
     public MainViewModel() : this(new RegistryService())
     {
@@ -99,6 +100,18 @@ public class MainViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _includeWindowsSystemItems, value))
+            {
+                LoadContextMenuItems();
+            }
+        }
+    }
+
+    public bool ShowComHandlers
+    {
+        get => _showComHandlers;
+        set
+        {
+            if (SetProperty(ref _showComHandlers, value))
             {
                 LoadContextMenuItems();
             }
@@ -287,7 +300,7 @@ public class MainViewModel : ViewModelBase
 
         try
         {
-            var items = await _registryService.DiscoverContextMenuItemsAsync(IncludeWindowsSystemItems);
+            var items = await _registryService.DiscoverContextMenuItemsAsync(IncludeWindowsSystemItems, ShowComHandlers);
             
             foreach (var item in items)
             {

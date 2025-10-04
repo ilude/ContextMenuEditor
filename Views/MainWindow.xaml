@@ -32,7 +32,7 @@
         Padding="12" BorderThickness="0,0,0,1" Height="60">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <!-- Show Windows items toggle -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
                     <TextBlock Text="Show Windows items" VerticalAlignment="Center" Margin="0,0,2,0" LineStackingStrategy="BlockLineHeight" LineHeight="24"/>
                     <Border CornerRadius="12" BorderBrush="Transparent" BorderThickness="0" Padding="0" Background="{DynamicResource AlternateRowBackgroundBrush}" VerticalAlignment="Center" ClipToBounds="False" SnapsToDevicePixels="True" Margin="0">
                         <Grid Width="44" Height="32">
@@ -49,6 +49,24 @@
                         </Grid>
                     </Border>
                 </StackPanel>
+                    <!-- Show COM handlers toggle -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="Show COM handlers" VerticalAlignment="Center" Margin="0,0,2,0" LineStackingStrategy="BlockLineHeight" LineHeight="24"/>
+                        <Border CornerRadius="12" BorderBrush="Transparent" BorderThickness="0" Padding="0" Background="{DynamicResource AlternateRowBackgroundBrush}" VerticalAlignment="Center" ClipToBounds="False" SnapsToDevicePixels="True" Margin="0">
+                            <Grid Width="44" Height="32">
+                                <mah:ToggleSwitch
+                                    IsOn="{Binding ShowComHandlers, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    OnContent=""
+                                    OffContent=""
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Center"
+                                    Height="26"
+                                    MinWidth="0"
+                                    Margin="0"
+                                    Background="{DynamicResource AlternateRowBackgroundBrush}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
 
                 <!-- Theme toggle with sun/moon icons, no text label -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

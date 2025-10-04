@@ -38,23 +38,28 @@ public class RegistryService : IRegistryService
 
     public async Task<List<ContextMenuItem>> DiscoverContextMenuItemsAsync()
     {
-        return await DiscoverContextMenuItemsAsync(includeWindowsSystemItems: false);
+        return await DiscoverContextMenuItemsAsync(includeWindowsSystemItems: false, includeComHandlers: true);
     }
 
     public async Task<List<ContextMenuItem>> DiscoverContextMenuItemsAsync(bool includeWindowsSystemItems)
+    {
+        return await DiscoverContextMenuItemsAsync(includeWindowsSystemItems, includeComHandlers: true);
+    }
+
+    public async Task<List<ContextMenuItem>> DiscoverContextMenuItemsAsync(bool includeWindowsSystemItems, bool includeComHandlers)
     {
         return await Task.Run(() =>
         {
             var items = new List<ContextMenuItem>();
 
             // Discover file context menus
-            items.AddRange(DiscoverMenuItems(FileContextPaths, ContextMenuType.File, includeWindowsSystemItems));
+            items.AddRange(DiscoverMenuItems(FileContextPaths, ContextMenuType.File, includeWindowsSystemItems, includeComHandlers));
 
             // Discover directory context menus
-            items.AddRange(DiscoverMenuItems(DirectoryContextPaths, ContextMenuType.Directory, includeWindowsSystemItems));
+            items.AddRange(DiscoverMenuItems(DirectoryContextPaths, ContextMenuType.Directory, includeWindowsSystemItems, includeComHandlers));
 
             // Discover drive context menus
-            items.AddRange(DiscoverMenuItems(DriveContextPaths, ContextMenuType.Drive, includeWindowsSystemItems));
+            items.AddRange(DiscoverMenuItems(DriveContextPaths, ContextMenuType.Drive, includeWindowsSystemItems, includeComHandlers));
 
             // Discover umbrella/common handlers seen by Explorer
             var commonPaths = new[]
@@ -64,7 +69,7 @@ public class RegistryService : IRegistryService
                 @"Folder\\shell",
                 @"Folder\\shellex\ContextMenuHandlers"
             };
-            items.AddRange(DiscoverMenuItems(commonPaths, ContextMenuType.Directory, includeWindowsSystemItems));
+            items.AddRange(DiscoverMenuItems(commonPaths, ContextMenuType.Directory, includeWindowsSystemItems, includeComHandlers));
 
             // Remove duplicates - same program registered in multiple locations
             // Group by Key and normalized FilePath to catch items registered in multiple contexts
@@ -101,16 +106,27 @@ public class RegistryService : IRegistryService
                 .ThenBy(item => item.ProgramName)
                 .ToList();
 
+            if (!includeComHandlers)
+            {
+                deduplicatedItems = deduplicatedItems
+                    .Where(item => item.RegistryLocations.Any(location => !location.IsShellEx))
+                    .ToList();
+            }
+
             return deduplicatedItems;
         });
     }
 
-    private List<ContextMenuItem> DiscoverMenuItems(string[] basePaths, ContextMenuType menuType, bool includeWindowsSystemItems)
+    private List<ContextMenuItem> DiscoverMenuItems(string[] basePaths, ContextMenuType menuType, bool includeWindowsSystemItems, bool includeComHandlers)
     {
         var items = new List<ContextMenuItem>();
 
         foreach (var basePath in basePaths)
         {
+            if (!includeComHandlers && basePath.IndexOf("shellex\\ContextMenuHandlers", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                continue;
+            }
             try
             {
                 // Check both HKEY_CLASSES_ROOT (system) and HKEY_CURRENT_USER
