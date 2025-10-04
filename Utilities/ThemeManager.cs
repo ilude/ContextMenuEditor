@@ -12,6 +12,8 @@ public class ThemeManager
 {
     private static ThemeManager? _instance;
     private bool _isDarkMode = true; // Default to dark mode
+    private ResourceDictionary? _themeResources;
+    private int _mahAppsThemeIndex = -1;
 
     public static ThemeManager Instance => _instance ??= new ThemeManager();
 
@@ -41,23 +43,62 @@ public class ThemeManager
     {
         var app = Application.Current;
         if (app?.Resources == null) return;
+        // 1) Ensure MahApps theme dictionary (Dark.Blue / Light.Blue) matches current mode
+        EnsureMahAppsThemeDictionary(app);
 
-        // Clear existing merged dictionaries
-        app.Resources.MergedDictionaries.Clear();
+        // 2) Maintain our dedicated theme resource dictionary without touching other
+        // merged dictionaries (e.g., MahApps base resources).
+        if (_themeResources == null)
+        {
+            _themeResources = new ResourceDictionary();
+            app.Resources.MergedDictionaries.Add(_themeResources);
+        }
 
-        // Create new resource dictionary with theme colors
-        var themeDict = new ResourceDictionary();
+        _themeResources.Clear();
 
         if (_isDarkMode)
         {
-            ApplyDarkTheme(themeDict);
+            ApplyDarkTheme(_themeResources);
         }
         else
         {
-            ApplyLightTheme(themeDict);
+            ApplyLightTheme(_themeResources);
+        }
+    }
+
+    private void EnsureMahAppsThemeDictionary(Application app)
+    {
+        var dicts = app.Resources.MergedDictionaries;
+
+        // Locate MahApps theme dict index once
+        if (_mahAppsThemeIndex < 0)
+        {
+            for (int i = 0; i < dicts.Count; i++)
+            {
+                var src = dicts[i].Source?.OriginalString ?? string.Empty;
+                if (src.Contains("/MahApps.Metro;component/Styles/Themes/", StringComparison.OrdinalIgnoreCase))
+                {
+                    _mahAppsThemeIndex = i;
+                    break;
+                }
+            }
         }
 
-        app.Resources.MergedDictionaries.Add(themeDict);
+        if (_mahAppsThemeIndex >= 0 && _mahAppsThemeIndex < dicts.Count)
+        {
+            var newUri = new Uri(_isDarkMode
+                ? "pack://application:,,,/MahApps.Metro;component/Styles/Themes/Dark.Blue.xaml"
+                : "pack://application:,,,/MahApps.Metro;component/Styles/Themes/Light.Blue.xaml",
+                UriKind.Absolute);
+
+            // Only replace if different
+            var current = dicts[_mahAppsThemeIndex];
+            if (current.Source == null || !Uri.Compare(current.Source, newUri, UriComponents.AbsoluteUri, UriFormat.SafeUnescaped, StringComparison.OrdinalIgnoreCase).Equals(0))
+            {
+                var newDict = new ResourceDictionary { Source = newUri };
+                dicts[_mahAppsThemeIndex] = newDict;
+            }
+        }
     }
 
     private void ApplyDarkTheme(ResourceDictionary dict)

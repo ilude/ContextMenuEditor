@@ -23,6 +23,7 @@ public class MainViewModel : ViewModelBase
     private string _statusMessage = "Loading...";
     private bool _isLoading;
     private bool _isDarkMode;
+    private bool _includeWindowsSystemItems;
 
     public MainViewModel() : this(new RegistryService())
     {
@@ -82,7 +83,26 @@ public class MainViewModel : ViewModelBase
     public bool IsDarkMode
     {
         get => _isDarkMode;
-        set => SetProperty(ref _isDarkMode, value);
+        set
+        {
+            if (SetProperty(ref _isDarkMode, value))
+            {
+                // Apply the theme immediately when the toggle changes
+                ThemeManager.Instance.IsDarkMode = value;
+            }
+        }
+    }
+
+    public bool IncludeWindowsSystemItems
+    {
+        get => _includeWindowsSystemItems;
+        set
+        {
+            if (SetProperty(ref _includeWindowsSystemItems, value))
+            {
+                LoadContextMenuItems();
+            }
+        }
     }
 
     #endregion
@@ -244,6 +264,7 @@ public class MainViewModel : ViewModelBase
         ThemeManager.Instance.ToggleTheme();
     }
 
+
     #endregion
 
     #region Helper Methods
@@ -266,7 +287,7 @@ public class MainViewModel : ViewModelBase
 
         try
         {
-            var items = await _registryService.DiscoverContextMenuItemsAsync();
+            var items = await _registryService.DiscoverContextMenuItemsAsync(IncludeWindowsSystemItems);
             
             foreach (var item in items)
             {

@@ -38,18 +38,33 @@ public class RegistryService : IRegistryService
 
     public async Task<List<ContextMenuItem>> DiscoverContextMenuItemsAsync()
     {
+        return await DiscoverContextMenuItemsAsync(includeWindowsSystemItems: false);
+    }
+
+    public async Task<List<ContextMenuItem>> DiscoverContextMenuItemsAsync(bool includeWindowsSystemItems)
+    {
         return await Task.Run(() =>
         {
             var items = new List<ContextMenuItem>();
 
             // Discover file context menus
-            items.AddRange(DiscoverMenuItems(FileContextPaths, ContextMenuType.File));
+            items.AddRange(DiscoverMenuItems(FileContextPaths, ContextMenuType.File, includeWindowsSystemItems));
 
             // Discover directory context menus
-            items.AddRange(DiscoverMenuItems(DirectoryContextPaths, ContextMenuType.Directory));
+            items.AddRange(DiscoverMenuItems(DirectoryContextPaths, ContextMenuType.Directory, includeWindowsSystemItems));
 
             // Discover drive context menus
-            items.AddRange(DiscoverMenuItems(DriveContextPaths, ContextMenuType.Drive));
+            items.AddRange(DiscoverMenuItems(DriveContextPaths, ContextMenuType.Drive, includeWindowsSystemItems));
+
+            // Discover umbrella/common handlers seen by Explorer
+            var commonPaths = new[]
+            {
+                @"AllFilesystemObjects\\shell",
+                @"AllFilesystemObjects\\shellex\ContextMenuHandlers",
+                @"Folder\\shell",
+                @"Folder\\shellex\ContextMenuHandlers"
+            };
+            items.AddRange(DiscoverMenuItems(commonPaths, ContextMenuType.Directory, includeWindowsSystemItems));
 
             // Remove duplicates - same program registered in multiple locations
             // Group by Key and normalized FilePath to catch items registered in multiple contexts
@@ -90,7 +105,7 @@ public class RegistryService : IRegistryService
         });
     }
 
-    private List<ContextMenuItem> DiscoverMenuItems(string[] basePaths, ContextMenuType menuType)
+    private List<ContextMenuItem> DiscoverMenuItems(string[] basePaths, ContextMenuType menuType, bool includeWindowsSystemItems)
     {
         var items = new List<ContextMenuItem>();
 
@@ -99,8 +114,8 @@ public class RegistryService : IRegistryService
             try
             {
                 // Check both HKEY_CLASSES_ROOT (system) and HKEY_CURRENT_USER
-                items.AddRange(ScanRegistryKey(Registry.ClassesRoot, basePath, menuType, true));
-                items.AddRange(ScanRegistryKey(Registry.CurrentUser, @"Software\Classes\" + basePath, menuType, false));
+                items.AddRange(ScanRegistryKey(Registry.ClassesRoot, basePath, menuType, true, includeWindowsSystemItems));
+                items.AddRange(ScanRegistryKey(Registry.CurrentUser, @"Software\Classes\" + basePath, menuType, false, includeWindowsSystemItems));
             }
             catch (Exception ex)
             {
@@ -112,7 +127,7 @@ public class RegistryService : IRegistryService
         return items;
     }
 
-    private List<ContextMenuItem> ScanRegistryKey(RegistryKey rootKey, string path, ContextMenuType menuType, bool isSystemLevel)
+    private List<ContextMenuItem> ScanRegistryKey(RegistryKey rootKey, string path, ContextMenuType menuType, bool isSystemLevel, bool includeWindowsSystemItems)
     {
         var items = new List<ContextMenuItem>();
         var rootKeyName = rootKey.Name; // e.g., "HKEY_CLASSES_ROOT" or "HKEY_CURRENT_USER"
@@ -129,7 +144,7 @@ public class RegistryService : IRegistryService
                     using var subKey = key.OpenSubKey(subKeyName);
                     if (subKey == null) continue;
 
-                    var item = CreateContextMenuItem(subKey, subKeyName, path, menuType, isSystemLevel, rootKeyName);
+                    var item = CreateContextMenuItem(subKey, subKeyName, path, menuType, isSystemLevel, rootKeyName, includeWindowsSystemItems);
                     if (item != null)
                     {
                         items.Add(item);
@@ -150,7 +165,7 @@ public class RegistryService : IRegistryService
     }
 
     private ContextMenuItem? CreateContextMenuItem(RegistryKey key, string keyName, string basePath, 
-        ContextMenuType menuType, bool isSystemLevel, string rootKeyName)
+        ContextMenuType menuType, bool isSystemLevel, string rootKeyName, bool includeWindowsSystemItems)
     {
         // Skip known Windows built-in items we don't want to manage
         var skipList = new[] 
@@ -172,6 +187,9 @@ public class RegistryService : IRegistryService
 
         // Remove keyboard shortcut markers (& character)
         displayName = displayName.Replace("&", "");
+
+    // Track enabled state; start true and refine based on LegacyDisable and Blocked lists
+    bool isEnabled = true;
 
         // Get command path (shell verbs) or resolve shellex handler to DLL via CLSID
         string? commandPath = null;
@@ -213,6 +231,12 @@ public class RegistryService : IRegistryService
                             if (!string.IsNullOrWhiteSpace(friendly))
                                 displayName = friendly!;
                         }
+
+                        // Respect Shell Extensions\\Blocked (HKCU/HKLM)
+                        if (IsShellExtensionBlocked(NormalizeClsid(clsid)))
+                        {
+                            isEnabled = false;
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -227,11 +251,11 @@ public class RegistryService : IRegistryService
             return null;
 
         // Filter out Windows system directory programs using environment variables
-        if (IsWindowsSystemProgram(commandPath))
+        if (!includeWindowsSystemItems && IsWindowsSystemProgram(commandPath))
             return null;
 
-        // Check if item is enabled (LegacyDisable key existence means it's disabled)
-        var isEnabled = key.GetValue("LegacyDisable") == null;
+    // Combine LegacyDisable state
+    isEnabled = isEnabled && key.GetValue("LegacyDisable") == null;
 
         // Determine visibility: Normal, Extended (shows on Shift), or Hidden by VelocityId
         var visibility = VisibilityState.Normal;
@@ -256,8 +280,25 @@ public class RegistryService : IRegistryService
         {
             RootKey = rootKeyName,
             SubKeyPath = $@"{basePath}\{keyName}",
-            IsSystemLevel = isSystemLevel
+            IsSystemLevel = isSystemLevel,
+            IsShellEx = basePath.IndexOf("shellex\\ContextMenuHandlers", StringComparison.OrdinalIgnoreCase) >= 0,
+            HandlerClsid = null
         };
+
+        if (registryLocation.IsShellEx)
+        {
+            var handlerRef = key.GetValue("") as string;
+            if (!string.IsNullOrWhiteSpace(handlerRef))
+            {
+                var clsid = handlerRef.Trim();
+                const string clsidPrefix = "CLSID\\";
+                if (clsid.StartsWith(clsidPrefix, StringComparison.OrdinalIgnoreCase))
+                    clsid = clsid.Substring(clsidPrefix.Length);
+                if (!clsid.StartsWith("{"))
+                    clsid = "{" + clsid.Trim('{', '}') + "}";
+                registryLocation.HandlerClsid = clsid;
+            }
+        }
 
         return new ContextMenuItem
         {
@@ -439,18 +480,26 @@ public class RegistryService : IRegistryService
                     var rootKey = GetRegistryRootKey(location.RootKey);
                     if (rootKey == null) continue;
 
-                    using var key = rootKey.OpenSubKey(location.SubKeyPath, writable: true);
-                    if (key == null) continue;
-
-                    // Remove the LegacyDisable value to enable the item
-                    try
+                    // For shellex handlers, un-block CLSID
+                    if (location.IsShellEx && !string.IsNullOrWhiteSpace(location.HandlerClsid))
                     {
-                        key.DeleteValue("LegacyDisable", throwOnMissingValue: false);
+                        UnblockShellExtension(location.HandlerClsid);
                     }
-                    catch (UnauthorizedAccessException)
+                    else
                     {
-                        // May need admin rights for system-level keys
-                        System.Diagnostics.Debug.WriteLine($"Need admin rights to enable: {location.SubKeyPath}");
+                        using var key = rootKey.OpenSubKey(location.SubKeyPath, writable: true);
+                        if (key == null) continue;
+
+                        // Remove the LegacyDisable value to enable the item
+                        try
+                        {
+                            key.DeleteValue("LegacyDisable", throwOnMissingValue: false);
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            // May need admin rights for system-level keys
+                            System.Diagnostics.Debug.WriteLine($"Need admin rights to enable: {location.SubKeyPath}");
+                        }
                     }
                 }
                 return true;
@@ -475,18 +524,26 @@ public class RegistryService : IRegistryService
                     var rootKey = GetRegistryRootKey(location.RootKey);
                     if (rootKey == null) continue;
 
-                    using var key = rootKey.OpenSubKey(location.SubKeyPath, writable: true);
-                    if (key == null) continue;
-
-                    // Add LegacyDisable value to disable the item
-                    try
+                    // For shellex handlers, block CLSID
+                    if (location.IsShellEx && !string.IsNullOrWhiteSpace(location.HandlerClsid))
                     {
-                        key.SetValue("LegacyDisable", string.Empty);
+                        BlockShellExtension(location.HandlerClsid);
                     }
-                    catch (UnauthorizedAccessException)
+                    else
                     {
-                        // May need admin rights for system-level keys
-                        System.Diagnostics.Debug.WriteLine($"Need admin rights to disable: {location.SubKeyPath}");
+                        using var key = rootKey.OpenSubKey(location.SubKeyPath, writable: true);
+                        if (key == null) continue;
+
+                        // Add LegacyDisable value to disable the item
+                        try
+                        {
+                            key.SetValue("LegacyDisable", string.Empty);
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            // May need admin rights for system-level keys
+                            System.Diagnostics.Debug.WriteLine($"Need admin rights to disable: {location.SubKeyPath}");
+                        }
                     }
                 }
                 return true;
@@ -552,6 +609,61 @@ public class RegistryService : IRegistryService
             return Registry.LocalMachine;
         
         return null;
+    }
+
+    private static readonly string ShellExBlockedPath = @"Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked";
+
+    private void BlockShellExtension(string clsid)
+    {
+        // Prefer per-user block; attempt HKLM as well if elevated
+        try
+        {
+            using var hkcu = Registry.CurrentUser.CreateSubKey(ShellExBlockedPath, writable: true);
+            hkcu?.SetValue(clsid, string.Empty, RegistryValueKind.String);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error blocking shellex in HKCU: {ex.Message}");
+        }
+        try
+        {
+            using var hklm = Registry.LocalMachine.CreateSubKey(ShellExBlockedPath, writable: true);
+            hklm?.SetValue(clsid, string.Empty, RegistryValueKind.String);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Not elevated; ignore
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error blocking shellex in HKLM: {ex.Message}");
+        }
+    }
+
+    private void UnblockShellExtension(string clsid)
+    {
+        try
+        {
+            using var hkcu = Registry.CurrentUser.CreateSubKey(ShellExBlockedPath, writable: true);
+            hkcu?.DeleteValue(clsid, throwOnMissingValue: false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error unblocking shellex in HKCU: {ex.Message}");
+        }
+        try
+        {
+            using var hklm = Registry.LocalMachine.CreateSubKey(ShellExBlockedPath, writable: true);
+            hklm?.DeleteValue(clsid, throwOnMissingValue: false);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Not elevated; ignore
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error unblocking shellex in HKLM: {ex.Message}");
+        }
     }
 
     public Task<bool> CreateBackupAsync(List<ContextMenuItem> items, string filePath)
@@ -643,6 +755,33 @@ public class RegistryService : IRegistryService
             return "HKEY_LOCAL_MACHINE";
         
         return rootKeyName;
+    }
+
+    private string NormalizeClsid(string clsid)
+    {
+        var c = clsid.Trim();
+        const string p = "CLSID\\";
+        if (c.StartsWith(p, StringComparison.OrdinalIgnoreCase)) c = c.Substring(p.Length);
+        if (!c.StartsWith("{")) c = "{" + c.Trim('{', '}') + "}";
+        return c;
+    }
+
+    private bool IsShellExtensionBlocked(string normalizedClsid)
+    {
+        // Check HKCU and HKLM Blocked lists
+        try
+        {
+            using var hkcu = Registry.CurrentUser.OpenSubKey(ShellExBlockedPath);
+            if (hkcu?.GetValue(normalizedClsid) != null) return true;
+        }
+        catch { }
+        try
+        {
+            using var hklm = Registry.LocalMachine.OpenSubKey(ShellExBlockedPath);
+            if (hklm?.GetValue(normalizedClsid) != null) return true;
+        }
+        catch { }
+        return false;
     }
 
     private void WriteRegistryValue(System.IO.StreamWriter writer, string valueName, object? value, Microsoft.Win32.RegistryValueKind valueKind)

@@ -159,6 +159,16 @@ public class RegistryLocation
     /// Whether this is a system-level entry (from HKEY_CLASSES_ROOT).
     /// </summary>
     public bool IsSystemLevel { get; set; }
+
+    /// <summary>
+    /// True if this registry location represents a shellex ContextMenuHandler (COM CLSID based).
+    /// </summary>
+    public bool IsShellEx { get; set; }
+
+    /// <summary>
+    /// The CLSID associated with this shellex handler (normalized to {guid}).
+    /// </summary>
+    public string? HandlerClsid { get; set; }
 }
 
 /// <summary>

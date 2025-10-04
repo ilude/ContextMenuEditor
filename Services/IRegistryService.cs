@@ -16,6 +16,12 @@ public interface IRegistryService
     Task<List<Models.ContextMenuItem>> DiscoverContextMenuItemsAsync();
 
     /// <summary>
+    /// Discovers all context menu items with control over including Windows system items.
+    /// </summary>
+    /// <param name="includeWindowsSystemItems">If true, includes items under Windows directories (System32, etc.).</param>
+    Task<List<Models.ContextMenuItem>> DiscoverContextMenuItemsAsync(bool includeWindowsSystemItems);
+
+    /// <summary>
     /// Enables a context menu item in the registry.
     /// </summary>
     /// <param name="item">The item to enable.</param>

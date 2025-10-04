@@ -1,13 +1,16 @@
 <Window x:Class="ContextMenuEditor.Views.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="clr-namespace:ContextMenuEditor.ViewModels"
-        xmlns:views="clr-namespace:ContextMenuEditor.Views"
-        xmlns:util="clr-namespace:ContextMenuEditor.Utilities"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:ContextMenuEditor.ViewModels"
+    xmlns:views="clr-namespace:ContextMenuEditor.Views"
+    xmlns:util="clr-namespace:ContextMenuEditor.Utilities"
+    xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
         Title="Context Menu Editor" 
         Height="600" Width="900"
         MinHeight="400" MinWidth="700"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
     
     <Window.Resources>
         <util:StripQuotesConverter x:Key="StripQuotesConverter"/>
@@ -25,15 +28,71 @@
         </Grid.RowDefinitions>
         
         <!-- Header -->
-        <Border Grid.Row="0" Background="{DynamicResource HeaderBackgroundBrush}" 
-                Padding="12" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="🌙" FontSize="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                <Button Content="{Binding IsDarkMode, Converter={StaticResource ThemeLabelConverter}}"
-                        Command="{Binding ToggleThemeCommand}"
-                        Padding="8,4"
-                        MinWidth="80"
-                        Margin="0"/>
+    <Border Grid.Row="0" Background="{DynamicResource HeaderBackgroundBrush}" 
+        Padding="12" BorderThickness="0,0,0,1" Height="60">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- Show Windows items toggle -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <TextBlock Text="Show Windows items" VerticalAlignment="Center" Margin="0,0,2,0" LineStackingStrategy="BlockLineHeight" LineHeight="24"/>
+                    <Border CornerRadius="12" BorderBrush="Transparent" BorderThickness="0" Padding="0" Background="{DynamicResource AlternateRowBackgroundBrush}" VerticalAlignment="Center" ClipToBounds="False" SnapsToDevicePixels="True" Margin="0">
+                        <Grid Width="44" Height="32">
+                            <mah:ToggleSwitch
+                                IsOn="{Binding IncludeWindowsSystemItems, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                OnContent=""
+                                OffContent=""
+                                HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Center"
+                                    Height="26"
+                                MinWidth="0"
+                                Margin="0"
+                                Background="{DynamicResource AlternateRowBackgroundBrush}"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- Theme toggle with sun/moon icons, no text label -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Sun icon (active when Light mode) -->
+                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE706;" FontSize="14" VerticalAlignment="Center" Margin="0,0,4,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#808080"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDarkMode}" Value="False">
+                                        <Setter Property="Foreground" Value="{DynamicResource SelectionBackgroundBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Border CornerRadius="12" BorderBrush="Transparent" BorderThickness="0" Padding="0" Background="{DynamicResource AlternateRowBackgroundBrush}" VerticalAlignment="Center" ClipToBounds="False" SnapsToDevicePixels="True" Margin="0">
+                        <Grid Width="44" Height="32">
+                            <mah:ToggleSwitch
+                                IsOn="{Binding IsDarkMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                OnContent=""
+                                OffContent=""
+                                HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Center"
+                                    Height="26"
+                                MinWidth="0"
+                                Margin="0"
+                                Background="{DynamicResource AlternateRowBackgroundBrush}"/>
+                        </Grid>
+                    </Border>
+                    <!-- Moon icon (active when Dark mode) -->
+                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE708;" FontSize="14" VerticalAlignment="Center" Margin="4,0,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#808080"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDarkMode}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource SelectionBackgroundBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
             </StackPanel>
         </Border>
         
